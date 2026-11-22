@@ -672,7 +672,7 @@ export default function KaamApp() {
         </button>
 
         <div className="flex items-center gap-1.5">
-          <span className="px-2 py-0.5 rounded-lg bg-amber-500 text-slate-950 font-black text-sm">K</span>
+          <img src="/needHub-logo.png" alt="NeedHub" className="w-7 h-7 rounded-lg object-cover"/>
           <span className="font-black text-lg tracking-tight">NeedHub</span>
         </div>
 
