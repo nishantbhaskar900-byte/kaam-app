@@ -132,7 +132,10 @@ export function MenuModal({ activeModal, onClose, profile, onUpdateProfile }: Me
               </div>
               <button
                 type="button"
-                onClick={() => onUpdateProfile({ dark_mode: !profile?.dark_mode })}
+                onClick={() => {const nextDarkMode = !profile?.dark_mode;
+                  onUpdateProfile({ dark_mode: nextDarkMode });
+                  document.documentElement.classList.toggle('dark', nextDarkMode);
+                 }}
                 className={`w-14 h-8 rounded-full p-1 transition ${
                   profile?.dark_mode ? 'bg-amber-500' : 'bg-slate-300'
                 }`}
