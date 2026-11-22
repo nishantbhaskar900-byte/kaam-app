@@ -402,7 +402,7 @@ export default function KaamApp() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-amber-400 font-extrabold text-2xl">
+      <div className="min-h-screen flex items-center justify-center bg-white text-blue-600 dark:bg-transparent dark:text-sky-400 font-extrabold text-2xl">
         NeedHub...
       </div>
     );
@@ -411,19 +411,19 @@ export default function KaamApp() {
   // 1. LOGIN / SIGN UP SCREEN
   if (!session) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-center px-5 py-10">
-        <div className="max-w-md w-full mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-7 shadow-2xl">
+      <div className="min-h-screen bg-white text-slate-900 dark:bg-transparent dark:text-slate-50 flex flex-col justify-center px-5 py-10">
+        <div className="max-w-md w-full mx-auto bg-slate-50 border border-slate-200 dark:bg-[#0f172a]/90 dark:border-sky-500/20 rounded-3xl p-7 shadow-2xl">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-11 h-11 rounded-2xl bg-amber-500 text-slate-950 font-black text-xl flex items-center justify-center">
-              N
+            <div className="w-11 h-11 rounded-2xl bg-blue-600 dark:bg-sky-500 overflow-hidden shrink-0">
+              <img src="/needhub-logo.png" alt="NeedHub" className="w-full h-full object-cover rounded-2xl" />
             </div>
             <div>
               <h1 className="text-2xl font-black tracking-tight">NeedHub</h1>
-              <p className="text-xs text-slate-400">Daily Work • Instant Orders • Trusted Network</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Daily Work • Instant Orders • Trusted Network</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 bg-slate-800 p-1 rounded-2xl my-6">
+          <div className="grid grid-cols-2 gap-2 bg-slate-200/80 dark:bg-slate-900/90 p-1 rounded-2xl my-6">
             <button
               type="button"
               onClick={() => {
@@ -432,7 +432,7 @@ export default function KaamApp() {
                 setAuthError('');
               }}
               className={`py-2.5 rounded-xl text-xs font-extrabold transition ${
-                authMode === 'login' ? 'bg-amber-500 text-slate-950' : 'text-slate-300'
+                authMode === 'login' ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950' : 'text-slate-600 dark:text-slate-300'
               }`}
             >
               Log In
@@ -445,7 +445,7 @@ export default function KaamApp() {
                 setAuthError('');
               }}
               className={`py-2.5 rounded-xl text-xs font-extrabold transition ${
-                authMode === 'signup' ? 'bg-amber-500 text-slate-950' : 'text-slate-300'
+                authMode === 'signup' ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950' : 'text-slate-300'
               }`}
             >
               Sign Up
@@ -497,7 +497,7 @@ export default function KaamApp() {
 
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm"
+                className="w-full py-3.5 rounded-2xl bg-blue-600 dark:bg-sky-500 hover:bg-blue-700 dark:hover:bg-sk text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-sm"
               >
                 Send OTP
               </button>
@@ -505,7 +505,7 @@ export default function KaamApp() {
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               <p className="text-xs text-slate-300">
-                Enter the 6-digit OTP sent to <span className="font-bold text-amber-400">{phone}</span>
+                Enter the 6-digit OTP sent to <span className="font-bold text-blue-600 dark:text-sky-400">{phone}</span>
               </p>
               <input
                 type="text"
@@ -518,7 +518,7 @@ export default function KaamApp() {
               {authError && <p className="text-xs text-rose-400 font-semibold">{authError}</p>}
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-2xl bg-amber-500 text-slate-950 font-extrabold text-sm"
+                className="w-full py-3.5 rounded-2xl bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-sm"
               >
                 Verify OTP & Enter NeedHub
               </button>
@@ -626,7 +626,7 @@ export default function KaamApp() {
             <div className="flex gap-2 pt-2">
               <button
                 type="submit"
-                className="flex-1 py-3.5 rounded-2xl bg-amber-500 text-slate-950 font-extrabold text-sm"
+                className="flex-1 py-3.5 rounded-2xl bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-sm"
               >
                 Save Profile
               </button>
@@ -662,10 +662,10 @@ export default function KaamApp() {
             <img
               src={profile.avatar_url}
               alt={profile.full_name}
-              className="w-9 h-9 rounded-full object-cover border-2 border-amber-500"
+              className="w-9 h-9 rounded-full object-cover border-2 border-blue-600 dark:border-sky-40"
             />
           ) : (
-            <div className="w-9 h-9 rounded-full bg-amber-500 text-slate-950 font-black text-sm flex items-center justify-center">
+            <div className="w-9 h-9 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-black text-sm flex items-center justify-center">
               {profile?.full_name?.[0]?.toUpperCase() || 'N'}
             </div>
           )}
@@ -751,7 +751,7 @@ export default function KaamApp() {
           <button
             onClick={() => setActiveTab('stories')}
             className={`py-2.5 rounded-xl text-xs font-extrabold transition ${
-              activeTab === 'stories' ? 'bg-amber-500 text-slate-950' : 'text-slate-600 dark:text-slate-300'
+              activeTab === 'stories' ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950' : 'text-slate-600 dark:text-slate-300'
             }`}
           >
             Stories
@@ -759,7 +759,7 @@ export default function KaamApp() {
           <button
             onClick={() => setActiveTab('post')}
             className={`py-2.5 rounded-xl text-xs font-extrabold transition ${
-              activeTab === 'post' ? 'bg-amber-500 text-slate-950' : 'text-slate-600 dark:text-slate-300'
+              activeTab === 'post' ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950' : 'text-slate-600 dark:text-slate-300'
             }`}
           >
             Post Job
@@ -767,7 +767,7 @@ export default function KaamApp() {
           <button
             onClick={() => setActiveTab('find')}
             className={`py-2.5 rounded-xl text-xs font-extrabold transition ${
-              activeTab === 'find' ? 'bg-amber-500 text-slate-950' : 'text-slate-600 dark:text-slate-300'
+              activeTab === 'find' ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950' : 'text-slate-600 dark:text-slate-300'
             }`}
           >
             Find Job & People
@@ -796,7 +796,7 @@ export default function KaamApp() {
               />
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-extrabold text-xs"
+                className="px-4 py-2 rounded-xl bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-xs"
               >
                 Post Story
               </button>
@@ -815,7 +815,7 @@ export default function KaamApp() {
                     className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800"
                   >
                     <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-8 h-8 rounded-full bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-bold text-xs flex items-center justify-center">
                         {story.profiles?.full_name?.[0] || 'U'}
                       </div>
                       <div>
@@ -838,7 +838,7 @@ export default function KaamApp() {
           <div className="space-y-4">
             <button
               onClick={() => setShowPostForm((prev) => !prev)}
-              className="w-full py-4 rounded-2xl bg-amber-500 text-slate-950 font-black text-sm shadow-md"
+              className="w-full py-4 rounded-2xl bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-black text-sm shadow-md"
             >
               {showPostForm ? '✕ Close Post New Job Form' : '+ Post New Job'}
             </button>
@@ -957,7 +957,7 @@ export default function KaamApp() {
 
                 <button
                   type="submit"
-                  className="w-full py-3.5 rounded-2xl bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950 font-extrabold text-sm"
+                  className="w-full py-3.5 rounded-2xl bg-slate-900 dark:bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-sm"
                 >
                   Publish Job Now
                 </button>
@@ -981,7 +981,7 @@ export default function KaamApp() {
                       setEditJobTime(job.work_time);
                       setEditJobDesc(job.description);
                     }}
-                    className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-amber-500"
+                    className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-blue-600 dark:border-sky-40"
                   >
                     <div className="flex justify-between items-start">
                       <div>
@@ -1056,7 +1056,7 @@ export default function KaamApp() {
                     onClick={() => setSortBy(opt.id as any)}
                     className={`px-2.5 py-1 rounded-xl text-[11px] font-bold ${
                       sortBy === opt.id
-                        ? 'bg-amber-500 text-slate-950'
+                        ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                     }`}
                   >
@@ -1092,7 +1092,7 @@ export default function KaamApp() {
                     {job.hirer_id !== session.user.id && (
                       <button
                         onClick={() => handleApplyJob(job.id)}
-                        className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-extrabold text-xs"
+                        className="px-4 py-2 rounded-xl bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-xs"
                       >
                         Accept / Apply
                       </button>
@@ -1171,7 +1171,7 @@ export default function KaamApp() {
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="flex-1 py-3 rounded-xl bg-amber-500 text-slate-950 font-extrabold text-xs"
+                className="flex-1 py-3 rounded-xl bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-xs"
               >
                 Save Changes
               </button>
@@ -1253,7 +1253,7 @@ export default function KaamApp() {
                 onClick={() => setPaymentChoice('cash')}
                 className={`py-3 rounded-2xl font-extrabold text-xs border ${
                   paymentChoice === 'cash'
-                    ? 'bg-amber-500 text-slate-950 border-amber-500'
+                    ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 border-blue-600 dark:border-sky-40'
                     : 'border-slate-300 dark:border-slate-700'
                 }`}
               >
@@ -1263,7 +1263,7 @@ export default function KaamApp() {
                 onClick={() => setPaymentChoice('online')}
                 className={`py-3 rounded-2xl font-extrabold text-xs border ${
                   paymentChoice === 'online'
-                    ? 'bg-amber-500 text-slate-950 border-amber-500'
+                    ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 border-blue-600 dark:border-sky-40'
                     : 'border-slate-300 dark:border-slate-700'
                 }`}
               >
@@ -1322,7 +1322,7 @@ export default function KaamApp() {
                     key={star}
                     onClick={() => setRatingValue(star)}
                     className={`w-10 h-10 rounded-xl font-black text-sm ${
-                      ratingValue >= star ? 'bg-amber-500 text-slate-950' : 'bg-slate-200 dark:bg-slate-800'
+                      ratingValue >= star ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950' : 'bg-slate-200 dark:bg-slate-800'
                     }`}
                   >
                     ★
@@ -1396,7 +1396,7 @@ export default function KaamApp() {
                         key={m.id}
                         className={`p-2.5 rounded-xl text-xs max-w-[80%] ${
                           m.sender_id === session.user.id
-                            ? 'ml-auto bg-amber-500 text-slate-950 font-semibold'
+                            ? 'ml-auto bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-semibold'
                             : 'bg-white dark:bg-slate-700'
                         }`}
                       >
@@ -1414,7 +1414,7 @@ export default function KaamApp() {
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-extrabold text-xs"
+                    className="px-4 py-2 rounded-xl bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-xs"
                   >
                     Send
                   </button>
