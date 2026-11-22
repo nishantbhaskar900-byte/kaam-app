@@ -403,7 +403,7 @@ export default function KaamApp() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-amber-400 font-extrabold text-2xl">
-        KAAM...
+        NeedHub...
       </div>
     );
   }
@@ -415,10 +415,10 @@ export default function KaamApp() {
         <div className="max-w-md w-full mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-7 shadow-2xl">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-11 h-11 rounded-2xl bg-amber-500 text-slate-950 font-black text-xl flex items-center justify-center">
-              K
+              N
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight">Kaam</h1>
+              <h1 className="text-2xl font-black tracking-tight">NeedHub</h1>
               <p className="text-xs text-slate-400">Daily Work • Instant Orders • Trusted Network</p>
             </div>
           </div>
@@ -520,7 +520,7 @@ export default function KaamApp() {
                 type="submit"
                 className="w-full py-3.5 rounded-2xl bg-amber-500 text-slate-950 font-extrabold text-sm"
               >
-                Verify OTP & Enter Kaam
+                Verify OTP & Enter NeedHub
               </button>
               <button
                 type="button"
@@ -543,7 +543,7 @@ export default function KaamApp() {
         {showPermissions && <PermissionsModal onComplete={() => setShowPermissions(false)} />}
 
         <div className="max-w-md mx-auto bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-200 dark:border-slate-800">
-          <h2 className="text-xl font-black mb-1">Your Kaam Profile</h2>
+          <h2 className="text-xl font-black mb-1">Your NeedHub Profile</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
             Complete your details to post daily jobs, connect, and receive payments.
           </p>
@@ -666,14 +666,14 @@ export default function KaamApp() {
             />
           ) : (
             <div className="w-9 h-9 rounded-full bg-amber-500 text-slate-950 font-black text-sm flex items-center justify-center">
-              {profile?.full_name?.[0]?.toUpperCase() || 'K'}
+              {profile?.full_name?.[0]?.toUpperCase() || 'N'}
             </div>
           )}
         </button>
 
         <div className="flex items-center gap-1.5">
           <span className="px-2 py-0.5 rounded-lg bg-amber-500 text-slate-950 font-black text-sm">K</span>
-          <span className="font-black text-lg tracking-tight">Kaam</span>
+          <span className="font-black text-lg tracking-tight">NeedHub</span>
         </div>
 
         <div className="flex items-center gap-2 relative">
@@ -819,7 +819,7 @@ export default function KaamApp() {
                         {story.profiles?.full_name?.[0] || 'U'}
                       </div>
                       <div>
-                        <p className="text-xs font-bold">{story.profiles?.full_name || 'Kaam Member'}</p>
+                        <p className="text-xs font-bold">{story.profiles?.full_name || 'NeedHub Member'}</p>
                         <p className="text-[11px] text-slate-400">
                           {new Date(story.created_at).toLocaleString()}
                         </p>

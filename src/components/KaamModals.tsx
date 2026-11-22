@@ -94,7 +94,7 @@ export function MenuModal({ activeModal, onClose, profile, onUpdateProfile }: Me
 
   const inviteLink =
     typeof window !== 'undefined'
-      ? `${window.location.origin}?ref=${profile?.id?.slice(0, 8) || 'kaam'}`
+      ? `${window.location.origin}?ref=${profile?.id?.slice(0, 8) || 'NeedHub'}`
       : 'https://kaam.app/invite';
 
   const handleCopyInvite = () => {
@@ -113,7 +113,7 @@ export function MenuModal({ activeModal, onClose, profile, onUpdateProfile }: Me
       <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-extrabold text-slate-900 dark:text-white capitalize">
-            {activeModal === 'privacy' ? 'Privacy & Security' : activeModal === 'about' ? 'About Kaam' : activeModal}
+            {activeModal === 'privacy' ? 'Privacy & Security' : activeModal === 'about' ? 'About NeedHub' : activeModal}
           </h3>
           <button
             onClick={onClose}
@@ -203,9 +203,9 @@ export function MenuModal({ activeModal, onClose, profile, onUpdateProfile }: Me
 
         {activeModal === 'about' && (
           <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-            <p className="font-extrabold text-base text-slate-900 dark:text-white">Kaam — Daily Work & Network</p>
+            <p className="font-extrabold text-base text-slate-900 dark:text-white">NeedHub — Daily Work & Network</p>
             <p>
-              Kaam combines professional work networking with instant daily gig hiring, real-time job scheduling, and direct worker-to-hirer payments across iOS and Android.
+              NeedHub combines professional work networking with instant daily gig hiring, real-time job scheduling, and direct worker-to-hirer payments across iOS and Android.
             </p>
             <p className="text-xs text-slate-400">Version 1.0.0 • Built for Daily Earners & Hirers</p>
           </div>
@@ -214,7 +214,7 @@ export function MenuModal({ activeModal, onClose, profile, onUpdateProfile }: Me
         {activeModal === 'refer' && (
           <div className="space-y-4">
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              Invite workers and hirers to join Kaam and build your trusted daily work circle.
+              Invite workers and hirers to join NeedHub and build your trusted daily work circle.
             </p>
             <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-mono text-slate-800 dark:text-slate-200 break-all">
               {inviteLink}
@@ -230,8 +230,8 @@ export function MenuModal({ activeModal, onClose, profile, onUpdateProfile }: Me
                 <button
                   onClick={() =>
                     navigator.share({
-                      title: 'Join me on Kaam',
-                      text: 'Find and post daily work instantly on Kaam!',
+                      title: 'Join me on Needhub',
+                      text: 'Find and post daily work instantly on Needhub!',
                       url: inviteLink,
                     })
                   }
