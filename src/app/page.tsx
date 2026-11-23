@@ -754,7 +754,13 @@ export default function KaamApp() {
               activeTab === 'stories' ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950' : 'text-slate-600 dark:text-slate-300'
             }`}
           >
-            Stories
+            <span className="inline-flex items-center justify-center gap-1.5">
+  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+    <path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z" />
+  </svg>
+  <span>Home</span>
+</span>
+
           </button>
           <button
             onClick={() => setActiveTab('post')}
@@ -1344,7 +1350,7 @@ export default function KaamApp() {
       {/* MESSAGES MODAL (Connected People Only) */}
       {showMessagesModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-5 space-y-3">
+          <div className="w-full max-w-3xl max-h-[85vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-sky-500/20 rounded-3xl p-5 space-y-3 shadow-2xl">
             <div className="flex justify-between items-center">
               <h3 className="font-black text-base">Messages (Connected People)</h3>
               <button
@@ -1359,7 +1365,7 @@ export default function KaamApp() {
             </div>
 
             {!selectedChatUser ? (
-              <div className="space-y-2 max-h-72 overflow-y-auto">
+              <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
                 {people.filter((p) => connectedIds.has(p.id) && p.allow_messages !== false).length === 0 ? (
                   <p className="text-xs text-slate-500">Connect with people first to message them.</p>
                 ) : (
@@ -1369,7 +1375,7 @@ export default function KaamApp() {
                       <button
                         key={p.id}
                         onClick={() => setSelectedChatUser(p)}
-                        className="w-full text-left p-3 rounded-xl bg-slate-50 dark:bg-slate-800 font-bold text-sm"
+                        className="w-full flex items-centre justify-between text-left px-3.5 py-2.5 rounded-2xl bg-slate-50 hover:bg-blue-50/70 dark:bg-slate-800/80 dark:hover:bg-slate-800 border border-slate-200/70 dark:border-slate-700/70 transition"
                       >
                         {p.full_name}
                       </button>
@@ -1380,11 +1386,20 @@ export default function KaamApp() {
               <div className="space-y-3">
                 <button
                   onClick={() => setSelectedChatUser(null)}
-                  className="text-xs text-amber-600 font-bold"
+                  className="text-xs text-blue-600 dark:text-sky-400 font-bold hover:underline"
                 >
                   ← Back to Connections
                 </button>
-                <div className="h-52 overflow-y-auto space-y-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+<div className="flex items-center gap-2.5 pb-2 border-b border-slate-200 dark:border-slate-800">
+  <div className="w-8 h-8 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 flex items-center justify-center text-xs font-extrabold">
+    {selectedChatUser.full_name?.[0]?.toUpperCase() || 'U'}
+  </div>
+  <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+    {selectedChatUser.full_name}
+  </div>
+</div>
+
+                <div className="h-52 overflow-y-auto space-y-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800">
                   {messages
                     .filter(
                       (m) =>
@@ -1394,10 +1409,10 @@ export default function KaamApp() {
                     .map((m) => (
                       <div
                         key={m.id}
-                        className={`p-2.5 rounded-xl text-xs max-w-[80%] ${
+                        className={`px-3.5 py-2 rounded-2xl text-xs max-w-[78%] break-words ${
                           m.sender_id === session.user.id
-                            ? 'ml-auto bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-semibold'
-                            : 'bg-white dark:bg-slate-700'
+                            ? 'ml-auto rounded-br-sm bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-medium'
+                            : 'mr-auto rounded-bl-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700'
                         }`}
                       >
                         {m.body}
@@ -1410,11 +1425,11 @@ export default function KaamApp() {
                     value={chatText}
                     onChange={(e) => setChatText(e.target.value)}
                     placeholder="Type message..."
-                    className="flex-1 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
+                    className="flex-1 px-4 py-2 rounded-full text-xs bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 outline-none focus:border-blue-500 dark:focus:border-sky-400"
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-xs"
+                    className="px-4 py-2 rounded-full text-xs font-bold bg-blue-600 hover:bg-blue-700 dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 transition"
                   >
                     Send
                   </button>
