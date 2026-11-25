@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { MenuModal, PermissionsModal } from '@/components/KaamModals';
 import RegisterProviderForm from '@/components/RegisterProviderform';
 import ProviderSuggestions from '@/components/ProviderSuggestions';
+import WorkerJobRequestsPanel from '@/components/WorkerJobRequestsPanel';
 
 const JOB_TYPES = [
   'Helper',
@@ -30,7 +31,9 @@ export default function KaamApp() {
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [authError, setAuthError] = useState('');
-const [providerRefreshKey, setProviderRefreshKey] = useState(0);
+  const [providerRefreshKey, setProviderRefreshKey] = useState(0);
+  const [showRegisterWorkCard, setShowRegisterWorkCard] = useState(false);
+  const [postSearchQuery, setPostSearchQuery] = useState('');
 
   // Profile & Modals
   const [profile, setProfile] = useState<any>(null);
@@ -296,7 +299,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
     if (!chatText.trim() || !selectedChatUser || !session?.user) return;
     await supabase.from('messages').insert({
       sender_id: session.user.id,
-      receiver_id: selectedChatUser.id,
+      receiver_id: String(selectedChatUser.id),
       body: chatText.trim(),
     });
     setChatText('');
@@ -448,7 +451,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
                 setAuthError('');
               }}
               className={`py-2.5 rounded-xl text-xs font-extrabold transition ${
-                authMode === 'signup' ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950' : 'text-slate-300'
+                authMode === 'signup' ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950' : 'text-slate-600 dark:text-slate-300'
               }`}
             >
               Sign Up
@@ -500,7 +503,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
 
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-2xl bg-blue-600 dark:bg-sky-500 hover:bg-blue-700 dark:hover:bg-sk text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-sm"
+                className="w-full py-3.5 rounded-2xl bg-blue-600 dark:bg-sky-500 hover:bg-blue-700 dark:hover:bg-sky-400 text-white dark:text-slate-950 font-extrabold text-sm"
               >
                 Send OTP
               </button>
@@ -521,7 +524,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
               {authError && <p className="text-xs text-rose-400 font-semibold">{authError}</p>}
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-2xl bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-sm"
+                className="w-full py-3.5 rounded-2xl bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-extrabold text-sm"
               >
                 Verify OTP & Enter NeedHub
               </button>
@@ -629,7 +632,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
             <div className="flex gap-2 pt-2">
               <button
                 type="submit"
-                className="flex-1 py-3.5 rounded-2xl bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-sm"
+                className="flex-1 py-3.5 rounded-2xl bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-extrabold text-sm"
               >
                 Save Profile
               </button>
@@ -665,17 +668,17 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
             <img
               src={profile.avatar_url}
               alt={profile.full_name}
-              className="w-9 h-9 rounded-full object-cover border-2 border-blue-600 dark:border-sky-40"
+              className="w-9 h-9 rounded-full object-cover border-2 border-blue-600 dark:border-sky-400"
             />
           ) : (
-            <div className="w-9 h-9 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-black text-sm flex items-center justify-center">
+            <div className="w-9 h-9 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-black text-sm flex items-center justify-center">
               {profile?.full_name?.[0]?.toUpperCase() || 'N'}
             </div>
           )}
         </button>
 
         <div className="flex items-center gap-1.5">
-          <img src="/needhub-logo.png" alt="NeedHub" className="w-7 h-7 rounded-lg object-cover"/>
+          <img src="/needhub-logo.png" alt="NeedHub" className="w-7 h-7 rounded-lg object-cover" />
           <span className="font-black text-lg tracking-tight">NeedHub</span>
         </div>
 
@@ -696,7 +699,16 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 top-12 w-52 rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 py-2 z-40 text-sm font-semibold">
+            <div className="absolute right-0 top-12 w-56 rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 py-2 z-40 text-sm font-semibold">
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  setShowRegisterWorkCard(true);
+                }}
+                className="w-full text-left px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                🪪 Register Work Card
+              </button>
               <button
                 onClick={() => {
                   setMenuOpen(false);
@@ -754,21 +766,20 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
           <button
             onClick={() => setActiveTab('stories')}
             className={`py-2.5 rounded-xl text-xs font-extrabold transition ${
-              activeTab === 'stories' ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950' : 'text-slate-600 dark:text-slate-300'
+              activeTab === 'stories' ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950' : 'text-slate-600 dark:text-slate-300'
             }`}
           >
             <span className="inline-flex items-center justify-center gap-1.5">
-  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-    <path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z" />
-  </svg>
-  <span>Home</span>
-</span>
-
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z" />
+              </svg>
+              <span>Home</span>
+            </span>
           </button>
           <button
             onClick={() => setActiveTab('post')}
             className={`py-2.5 rounded-xl text-xs font-extrabold transition ${
-              activeTab === 'post' ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950' : 'text-slate-600 dark:text-slate-300'
+              activeTab === 'post' ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950' : 'text-slate-600 dark:text-slate-300'
             }`}
           >
             Post Job
@@ -776,7 +787,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
           <button
             onClick={() => setActiveTab('find')}
             className={`py-2.5 rounded-xl text-xs font-extrabold transition ${
-              activeTab === 'find' ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950' : 'text-slate-600 dark:text-slate-300'
+              activeTab === 'find' ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950' : 'text-slate-600 dark:text-slate-300'
             }`}
           >
             Find Job & People
@@ -805,7 +816,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
               />
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-xs"
+                className="px-4 py-2 rounded-xl bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-extrabold text-xs"
               >
                 Post Story
               </button>
@@ -824,7 +835,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
                     className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800"
                   >
                     <div className="flex items-center gap-2.5 mb-2">
-                      <div className="w-8 h-8 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-bold text-xs flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-bold text-xs flex items-center justify-center">
                         {story.profiles?.full_name?.[0] || 'U'}
                       </div>
                       <div>
@@ -847,10 +858,74 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
           <div className="space-y-4">
             <button
               onClick={() => setShowPostForm((prev) => !prev)}
-              className="w-full py-4 rounded-2xl bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-black text-sm shadow-md"
+              className="w-full py-4 rounded-2xl bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-black text-sm shadow-md"
             >
               {showPostForm ? '✕ Close Post New Job Form' : '+ Post New Job'}
             </button>
+
+            {/* SEARCH BAR JUST BELOW POST NEW JOB */}
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <label htmlFor="post-job-search" className="text-xs font-extrabold">
+                  Search Work Type / Area
+                </label>
+                {postSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setPostSearchQuery('')}
+                    className="text-[11px] font-bold text-blue-600 dark:text-sky-400 hover:underline"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <input
+                id="post-job-search"
+                type="text"
+                value={postSearchQuery}
+                onChange={(e) => setPostSearchQuery(e.target.value)}
+                placeholder="Search by job type or area (e.g. Electrician, Plumber, Piprali Road)..."
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-sm outline-none focus:border-blue-600 dark:focus:border-sky-400"
+              />
+              <div className="flex gap-1.5 flex-wrap pt-0.5">
+                {['Electrician', 'Plumber', 'Helper', 'Driver', 'Technician'].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => setPostSearchQuery(chip)}
+                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition ${
+                      postSearchQuery.toLowerCase() === chip.toLowerCase()
+                        ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+              {postSearchQuery.trim() && (
+                <div className="pt-2">
+                  <ProviderSuggestions
+                    refreshKey={providerRefreshKey}
+                    initialQuery={postSearchQuery.trim()}
+                    searchQuery={postSearchQuery.trim()}
+                    currentUserId={session?.user?.id}
+                    onJobRequestCreated={() => {
+                      setProviderRefreshKey((k) => k + 1);
+                      if (session?.user?.id) loadEverything(session.user.id);
+                    }}
+                    onOpenChatWithProvider={(provider) => {
+                      setSelectedChatUser({
+                        id: String(provider.id),
+                        full_name: provider.full_name,
+                        phone: provider.phone,
+                      });
+                      setShowMessagesModal(true);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
 
             {showPostForm && (
               <form
@@ -966,7 +1041,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
 
                 <button
                   type="submit"
-                  className="w-full py-3.5 rounded-2xl bg-slate-900 dark:bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-sm"
+                  className="w-full py-3.5 rounded-2xl bg-slate-900 dark:bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-extrabold text-sm"
                 >
                   Publish Job Now
                 </button>
@@ -990,7 +1065,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
                       setEditJobTime(job.work_time);
                       setEditJobDesc(job.description);
                     }}
-                    className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-blue-600 dark:border-sky-40"
+                    className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 cursor-pointer hover:border-blue-600 dark:hover:border-sky-400"
                   >
                     <div className="flex justify-between items-start">
                       <div>
@@ -1014,6 +1089,15 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
         {/* TAB 3: FIND JOB & PEOPLE */}
         {activeTab === 'find' && (
           <div className="space-y-4">
+            <WorkerJobRequestsPanel
+              currentUserId={session?.user?.id}
+              refreshKey={providerRefreshKey}
+              onUpdated={() => {
+                setProviderRefreshKey((k) => k + 1);
+                if (session?.user?.id) loadEverything(session.user.id);
+              }}
+            />
+
             <button
               onClick={() => setShowWorkerScheduled((prev) => !prev)}
               className="w-full py-3.5 px-4 rounded-2xl bg-slate-900 dark:bg-slate-800 text-white font-extrabold text-xs flex items-center justify-between"
@@ -1065,7 +1149,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
                     onClick={() => setSortBy(opt.id as any)}
                     className={`px-2.5 py-1 rounded-xl text-[11px] font-bold ${
                       sortBy === opt.id
-                        ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950'
+                        ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                     }`}
                   >
@@ -1101,7 +1185,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
                     {job.hirer_id !== session.user.id && (
                       <button
                         onClick={() => handleApplyJob(job.id)}
-                        className="px-4 py-2 rounded-xl bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-xs"
+                        className="px-4 py-2 rounded-xl bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-extrabold text-xs"
                       >
                         Accept / Apply
                       </button>
@@ -1142,6 +1226,30 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
         )}
       </main>
 
+      {/* MODAL: REGISTER WORK CARD (FROM 3-DOTS MENU) */}
+      {showRegisterWorkCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-black text-base">Register Work Card</h3>
+              <button
+                type="button"
+                onClick={() => setShowRegisterWorkCard(false)}
+                className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold"
+              >
+                Close
+              </button>
+            </div>
+            <RegisterProviderForm
+              onSuccess={() => {
+                setProviderRefreshKey((prev) => prev + 1);
+                setShowRegisterWorkCard(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* MODAL: HIRER EDIT / DELETE POSTED JOB */}
       {selectedPostedJob && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -1180,7 +1288,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="flex-1 py-3 rounded-xl bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 font-extrabold text-xs"
+                className="flex-1 py-3 rounded-xl bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-extrabold text-xs"
               >
                 Save Changes
               </button>
@@ -1262,7 +1370,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
                 onClick={() => setPaymentChoice('cash')}
                 className={`py-3 rounded-2xl font-extrabold text-xs border ${
                   paymentChoice === 'cash'
-                    ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 border-blue-600 dark:border-sky-40'
+                    ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 border-blue-600 dark:border-sky-400'
                     : 'border-slate-300 dark:border-slate-700'
                 }`}
               >
@@ -1272,7 +1380,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
                 onClick={() => setPaymentChoice('online')}
                 className={`py-3 rounded-2xl font-extrabold text-xs border ${
                   paymentChoice === 'online'
-                    ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950 border-blue-600 dark:border-sky-40'
+                    ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 border-blue-600 dark:border-sky-400'
                     : 'border-slate-300 dark:border-slate-700'
                 }`}
               >
@@ -1331,7 +1439,7 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
                     key={star}
                     onClick={() => setRatingValue(star)}
                     className={`w-10 h-10 rounded-xl font-black text-sm ${
-                      ratingValue >= star ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-white dark:text-white dark:text-slate-950' : 'bg-slate-200 dark:bg-slate-800'
+                      ratingValue >= star ? 'bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950' : 'bg-slate-200 dark:bg-slate-800'
                     }`}
                   >
                     ★
@@ -1350,12 +1458,12 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
         </div>
       )}
 
-      {/* MESSAGES MODAL (Connected People Only) */}
+      {/* MESSAGES MODAL (Connected People + Direct Chats) */}
       {showMessagesModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-3xl max-h-[85vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-sky-500/20 rounded-3xl p-5 space-y-3 shadow-2xl">
             <div className="flex justify-between items-center">
-              <h3 className="font-black text-base">Messages (Connected People)</h3>
+              <h3 className="font-black text-base">Messages</h3>
               <button
                 onClick={() => {
                   setShowMessagesModal(false);
@@ -1367,123 +1475,151 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
               </button>
             </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 min-h-[380px] max-h-[65vh]">
-        {/* Left Column: Connected People / Chats List */}
-        <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-3 md:pb-0 md:pr-3 overflow-y-auto space-y-2">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1">
-            Chats
-          </div>
-          {people.filter((p) => connectedIds.has(p.id) && p.allow_messages !== false).length === 0 ? (
-            <p className="text-xs text-slate-500 px-1 py-2">
-              Connect with people first to message them.
-            </p>
-          ) : (
-            people
-              .filter((p) => connectedIds.has(p.id) && p.allow_messages !== false)
-              .map((p) => {
-                const isSelected = selectedChatUser?.id === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setSelectedChatUser(p)}
-                    className={`w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-2xl transition ${
-                      isSelected
-                        ? 'bg-blue-50 dark:bg-sky-500/15 border border-blue-200 dark:border-sky-500/40'
-                        : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/70 dark:hover:bg-slate-800 border border-transparent'
-                    }`}
-                  >
-                    <div className="w-8 h-8 shrink-0 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 flex items-center justify-center text-xs font-extrabold">
-                      {p.full_name?.[0]?.toUpperCase() || 'U'}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                        {p.full_name}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })
-          )}
-        </div>
-
-        {/* Right Column: Active Chat Thread */}
-        <div className="md:col-span-7 flex flex-col justify-between min-h-[320px]">
-          {!selectedChatUser ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center px-4 py-8 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-dashed border-slate-200 dark:border-slate-800">
-              <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                Your Messages
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Left side se kisi connected user ko select karke chat shuru karo.
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col h-full justify-between gap-2.5">
-              {/* Top Chat Header */}
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 flex items-center justify-center text-xs font-extrabold">
-                    {selectedChatUser.full_name?.[0]?.toUpperCase() || 'U'}
-                  </div>
-                  <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    {selectedChatUser.full_name}
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 min-h-[380px] max-h-[65vh]">
+              {/* Left Column: Connected People + Direct Messaged Users */}
+              <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-3 md:pb-0 md:pr-3 overflow-y-auto space-y-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1">
+                  Chats
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedChatUser(null)}
-                  className="text-xs text-blue-600 dark:text-sky-400 font-bold hover:underline"
-                >
-                  Unselect
-                </button>
+                {(() => {
+                  const chatPartnersMap = new Map<string, any>();
+
+                  people
+                    .filter((p) => connectedIds.has(p.id) && p.allow_messages !== false)
+                    .forEach((p) => {
+                      chatPartnersMap.set(String(p.id), p);
+                    });
+
+                  messages.forEach((m: any) => {
+                    const otherId =
+                      m.sender_id === session.user.id ? String(m.receiver_id) : String(m.sender_id);
+                    if (!otherId || otherId === session.user.id) return;
+                    if (!chatPartnersMap.has(otherId)) {
+                      const foundProfile = people.find((p) => String(p.id) === otherId);
+                      chatPartnersMap.set(
+                        otherId,
+                        foundProfile || {
+                          id: otherId,
+                          full_name: `User (${otherId.slice(0, 6)})`,
+                        }
+                      );
+                    }
+                  });
+
+                  const chatPartners = Array.from(chatPartnersMap.values());
+
+                  if (chatPartners.length === 0) {
+                    return (
+                      <p className="text-xs text-slate-500 px-1 py-2">
+                        Connect with people or message a provider to start chatting.
+                      </p>
+                    );
+                  }
+
+                  return chatPartners.map((p) => {
+                    const isSelected = String(selectedChatUser?.id) === String(p.id);
+                    return (
+                      <button
+                        key={String(p.id)}
+                        type="button"
+                        onClick={() => setSelectedChatUser(p)}
+                        className={`w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-2xl transition ${
+                          isSelected
+                            ? 'bg-blue-50 dark:bg-sky-500/15 border border-blue-200 dark:border-sky-500/40'
+                            : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/70 dark:hover:bg-slate-800 border border-transparent'
+                        }`}
+                      >
+                        <div className="w-8 h-8 shrink-0 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 flex items-center justify-center text-xs font-extrabold">
+                          {p.full_name?.[0]?.toUpperCase() || 'U'}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                            {p.full_name}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  });
+                })()}
               </div>
 
-              {/* Messages Scroll Area */}
-              <div className="h-64 overflow-y-auto space-y-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800">
-                {messages
-                  .filter(
-                    (m) =>
-                      (m.sender_id === session.user.id && m.receiver_id === selectedChatUser.id) ||
-                      (m.sender_id === selectedChatUser.id && m.receiver_id === session.user.id)
-                  )
-                  .map((m) => (
-                    <div
-                      key={m.id}
-                      className={`px-3.5 py-2 rounded-2xl text-xs max-w-[78%] break-words ${
-                        m.sender_id === session.user.id
-                          ? 'ml-auto rounded-br-sm bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-medium'
-                          : 'mr-auto rounded-bl-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700'
-                      }`}
-                    >
-                      {m.body}
+              {/* Right Column: Active Chat Thread */}
+              <div className="md:col-span-7 flex flex-col justify-between min-h-[320px]">
+                {!selectedChatUser ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center px-4 py-8 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-dashed border-slate-200 dark:border-slate-800">
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                      Your Messages
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Left side se kisi user ko select karke chat shuru karo.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col h-full justify-between gap-2.5">
+                    {/* Top Chat Header */}
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 flex items-center justify-center text-xs font-extrabold">
+                          {selectedChatUser.full_name?.[0]?.toUpperCase() || 'U'}
+                        </div>
+                        <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                          {selectedChatUser.full_name}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedChatUser(null)}
+                        className="text-xs text-blue-600 dark:text-sky-400 font-bold hover:underline"
+                      >
+                        Unselect
+                      </button>
                     </div>
-                  ))}
-              </div>
 
-              {/* Message Input Box */}
-              <form onSubmit={handleSendMessage} className="flex gap-2">
-                <input
-                  type="text"
-                  value={chatText}
-                  onChange={(e) => setChatText(e.target.value)}
-                  placeholder="Type message..."
-                  className="flex-1 px-4 py-2 rounded-full text-xs bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 outline-none focus:border-blue-500 dark:focus:border-sky-400"
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-full text-xs font-bold bg-blue-600 hover:bg-blue-700 dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 transition"
-                >
-                  Send
-                </button>
-              </form>
+                    {/* Messages Scroll Area */}
+                    <div className="h-64 overflow-y-auto space-y-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800">
+                      {messages
+                        .filter(
+                          (m) =>
+                            (m.sender_id === session.user.id && String(m.receiver_id) === String(selectedChatUser.id)) ||
+                            (String(m.sender_id) === String(selectedChatUser.id) && m.receiver_id === session.user.id)
+                        )
+                        .map((m) => (
+                          <div
+                            key={m.id}
+                            className={`px-3.5 py-2 rounded-2xl text-xs max-w-[78%] break-words ${
+                              m.sender_id === session.user.id
+                                ? 'ml-auto rounded-br-sm bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-medium'
+                                : 'mr-auto rounded-bl-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            {m.body}
+                          </div>
+                        ))}
+                    </div>
+
+                    {/* Message Input Box */}
+                    <form onSubmit={handleSendMessage} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={chatText}
+                        onChange={(e) => setChatText(e.target.value)}
+                        placeholder="Type message..."
+                        className="flex-1 px-4 py-2 rounded-full text-xs bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 outline-none focus:border-blue-500 dark:focus:border-sky-400"
+                      />
+                      <button
+                        type="submit"
+                        className="px-4 py-2 rounded-full text-xs font-bold bg-blue-600 hover:bg-blue-700 dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 transition"
+                      >
+                        Send
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
       {/* SETTINGS / PRIVACY / ABOUT / REFER MODAL */}
       <MenuModal
@@ -1492,13 +1628,6 @@ const [providerRefreshKey, setProviderRefreshKey] = useState(0);
         profile={profile}
         onUpdateProfile={handleUpdateProfileField}
       />
-      <section className="mx-auto max-w-4xl space-y-6 px-4 py-8">
-  <ProviderSuggestions refreshKey={providerRefreshKey} />
-  <RegisterProviderForm
-    onSuccess={() => setProviderRefreshKey((prev) => prev + 1)}
-  />
-</section>
-
     </div>
   );
 }
