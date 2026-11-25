@@ -1364,79 +1364,120 @@ export default function KaamApp() {
               </button>
             </div>
 
-            {!selectedChatUser ? (
-              <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
-                {people.filter((p) => connectedIds.has(p.id) && p.allow_messages !== false).length === 0 ? (
-                  <p className="text-xs text-slate-500">Connect with people first to message them.</p>
-                ) : (
-                  people
-                    .filter((p) => connectedIds.has(p.id) && p.allow_messages !== false)
-                    .map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => setSelectedChatUser(p)}
-                        className="w-full flex items-centre justify-between text-left px-3.5 py-2.5 rounded-2xl bg-slate-50 hover:bg-blue-50/70 dark:bg-slate-800/80 dark:hover:bg-slate-800 border border-slate-200/70 dark:border-slate-700/70 transition"
-                      >
-                        {p.full_name}
-                      </button>
-                    ))
-                )}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 min-h-[380px] max-h-[65vh]">
+  {/* Left Column: Connected People / Chats List */}
+  <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-3 md:pb-0 md:pr-3 overflow-y-auto space-y-2">
+    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1">
+      Chats
+    </div>
+    {people.filter((p) => connectedIds.has(p.id) && p.allow_messages !== false).length === 0 ? (
+      <p className="text-xs text-slate-500 px-1 py-2">
+        Connect with people first to message them.
+      </p>
+    ) : (
+      people
+        .filter((p) => connectedIds.has(p.id) && p.allow_messages !== false)
+        .map((p) => {
+          const isSelected = selectedChatUser?.id === p.id;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setSelectedChatUser(p)}
+              className={`w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-2xl transition ${
+                isSelected
+                  ? 'bg-blue-50 dark:bg-sky-500/15 border border-blue-200 dark:border-sky-500/40'
+                  : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/70 dark:hover:bg-slate-800 border border-transparent'
+              }`}
+            >
+              <div className="w-8 h-8 shrink-0 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 flex items-center justify-center text-xs font-extrabold">
+                {p.full_name?.[0]?.toUpperCase() || 'U'}
               </div>
-            ) : (
-              <div className="space-y-3">
-                <button
-                  onClick={() => setSelectedChatUser(null)}
-                  className="text-xs text-blue-600 dark:text-sky-400 font-bold hover:underline"
-                >
-                  ← Back to Connections
-                </button>
-<div className="flex items-center gap-2.5 pb-2 border-b border-slate-200 dark:border-slate-800">
-  <div className="w-8 h-8 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 flex items-center justify-center text-xs font-extrabold">
-    {selectedChatUser.full_name?.[0]?.toUpperCase() || 'U'}
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                  {p.full_name}
+                </div>
+              </div>
+            </button>
+          );
+        })
+    )}
   </div>
-  <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
-    {selectedChatUser.full_name}
+
+  {/* Right Column: Active Chat Thread */}
+  <div className="md:col-span-7 flex flex-col justify-between min-h-[320px]">
+    {!selectedChatUser ? (
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-4 py-8 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-dashed border-slate-200 dark:border-slate-800">
+        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+          Your Messages
+        </p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          Left side se kisi connected user ko select karke chat shuru karo.
+        </p>
+      </div>
+    ) : (
+      <div className="flex flex-col h-full justify-between gap-2.5">
+        {/* Top Chat Header */}
+        <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 flex items-center justify-center text-xs font-extrabold">
+              {selectedChatUser.full_name?.[0]?.toUpperCase() || 'U'}
+            </div>
+            <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+              {selectedChatUser.full_name}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedChatUser(null)}
+            className="text-xs text-blue-600 dark:text-sky-400 font-bold hover:underline"
+          >
+            Unselect
+          </button>
+        </div>
+
+        {/* Messages Scroll Area */}
+        <div className="h-64 overflow-y-auto space-y-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800">
+          {messages
+            .filter(
+              (m) =>
+                (m.sender_id === session.user.id && m.receiver_id === selectedChatUser.id) ||
+                (m.sender_id === selectedChatUser.id && m.receiver_id === session.user.id)
+            )
+            .map((m) => (
+              <div
+                key={m.id}
+                className={`px-3.5 py-2 rounded-2xl text-xs max-w-[78%] break-words ${
+                  m.sender_id === session.user.id
+                    ? 'ml-auto rounded-br-sm bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-medium'
+                    : 'mr-auto rounded-bl-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                {m.body}
+              </div>
+            ))}
+        </div>
+
+        {/* Message Input Box */}
+        <form onSubmit={handleSendMessage} className="flex gap-2">
+          <input
+            type="text"
+            value={chatText}
+            onChange={(e) => setChatText(e.target.value)}
+            placeholder="Type message..."
+            className="flex-1 px-4 py-2 rounded-full text-xs bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 outline-none focus:border-blue-500 dark:focus:border-sky-400"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 rounded-full text-xs font-bold bg-blue-600 hover:bg-blue-700 dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 transition"
+          >
+            Send
+          </button>
+        </form>
+      </div>
+    )}
   </div>
 </div>
-
-                <div className="h-52 overflow-y-auto space-y-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800">
-                  {messages
-                    .filter(
-                      (m) =>
-                        (m.sender_id === session.user.id && m.receiver_id === selectedChatUser.id) ||
-                        (m.sender_id === selectedChatUser.id && m.receiver_id === session.user.id)
-                    )
-                    .map((m) => (
-                      <div
-                        key={m.id}
-                        className={`px-3.5 py-2 rounded-2xl text-xs max-w-[78%] break-words ${
-                          m.sender_id === session.user.id
-                            ? 'ml-auto rounded-br-sm bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-medium'
-                            : 'mr-auto rounded-bl-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700'
-                        }`}
-                      >
-                        {m.body}
-                      </div>
-                    ))}
-                </div>
-                <form onSubmit={handleSendMessage} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={chatText}
-                    onChange={(e) => setChatText(e.target.value)}
-                    placeholder="Type message..."
-                    className="flex-1 px-4 py-2 rounded-full text-xs bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 outline-none focus:border-blue-500 dark:focus:border-sky-400"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-full text-xs font-bold bg-blue-600 hover:bg-blue-700 dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 transition"
-                  >
-                    Send
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
         </div>
       )}
 
