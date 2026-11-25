@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MenuModal, PermissionsModal } from '@/components/KaamModals';
+import RegisterProviderForm from '@/components/RegisterProviderform';
+import ProviderSuggestions from '@/components/ProviderSuggestions';
 
 const JOB_TYPES = [
   'Helper',
@@ -28,6 +30,7 @@ export default function KaamApp() {
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [authError, setAuthError] = useState('');
+const [providerRefreshKey, setProviderRefreshKey] = useState(0);
 
   // Profile & Modals
   const [profile, setProfile] = useState<any>(null);
@@ -1489,6 +1492,13 @@ export default function KaamApp() {
         profile={profile}
         onUpdateProfile={handleUpdateProfileField}
       />
+      <section className="mx-auto max-w-4xl space-y-6 px-4 py-8">
+  <ProviderSuggestions refreshKey={providerRefreshKey} />
+  <RegisterProviderForm
+    onSuccess={() => setProviderRefreshKey((prev) => prev + 1)}
+  />
+</section>
+
     </div>
   );
 }
