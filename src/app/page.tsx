@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { MenuModal, PermissionsModal } from '@/components/KaamModals';
 import RegisterProviderForm from '@/components/RegisterProviderform';
@@ -20,6 +20,13 @@ const JOB_TYPES = [
   'Technician',
 ];
 
+type AppNotification = {
+  id: string;
+  title: string;
+  detail: string;
+  timestamp: string;
+};
+
 export default function KaamApp() {
   // Auth & Onboarding State
   const [session, setSession] = useState<any>(null);
@@ -35,18 +42,31 @@ export default function KaamApp() {
   const [showRegisterWorkCard, setShowRegisterWorkCard] = useState(false);
   const [postSearchQuery, setPostSearchQuery] = useState('');
 
-  // Profile & Modals
+  // Profile, Notifications & Modals
   const [profile, setProfile] = useState<any>(null);
   const [showPermissions, setShowPermissions] = useState(false);
-  const [editingProfile, setEditingProfile] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [showProfileScreen, setShowProfileScreen] = useState(false);
+  const [profileSubView, setProfileSubView] = useState<'hub' | 'details' | 'rating'>('hub');
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [hasProfileChanges, setHasProfileChanges] = useState(false);
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<AppNotification | null>(null);
+  const [dismissedNotificationIds, setDismissedNotificationIds] = useState<string[]>([]);
   const [activeMenuModal, setActiveMenuModal] = useState<'settings' | 'privacy' | 'about' | 'refer' | null>(null);
   const [showMessagesModal, setShowMessagesModal] = useState(false);
+
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const qrInputRef = useRef<HTMLInputElement | null>(null);
 
   // Profile Form Fields
   const [fullName, setFullName] = useState('');
   const [profilePhone, setProfilePhone] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
+  const [gender, setGender] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [emergencyContact, setEmergencyContact] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [upiQrUrl, setUpiQrUrl] = useState('');
 
@@ -92,7 +112,6 @@ export default function KaamApp() {
   const [hirerPendingPaymentApp, setHirerPendingPaymentApp] = useState<any>(null);
   const [ratingValue, setRatingValue] = useState(5);
 
-  // Initialize Auth Session
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
@@ -104,35 +123,48 @@ export default function KaamApp() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // Load Profile & App Data when Logged In
   useEffect(() => {
     if (!session?.user) return;
     loadEverything(session.user.id);
   }, [session]);
 
-  // Apply Dark Mode class
   useEffect(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.classList.toggle('dark', Boolean(profile?.dark_mode));
     }
   }, [profile?.dark_mode]);
 
+  const syncProfileFormState = (profData: any, fallbackUser?: any) => {
+    setFullName(profData?.full_name || '');
+    setProfilePhone(profData?.phone || fallbackUser?.phone || '');
+    setProfileEmail(profData?.email || fallbackUser?.email || '');
+    setGender(profData?.gender || '');
+    setDateOfBirth(profData?.date_of_birth || '');
+    setEmergencyContact(profData?.emergency_contact || '');
+    setAvatarUrl(profData?.avatar_url || '');
+    setUpiQrUrl(profData?.upi_qr_url || '');
+    setHasProfileChanges(false);
+    setShowPhotoMenu(false);
+  };
+
   const loadEverything = async (userId: string) => {
     const { data: prof } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
     if (!prof || !prof.full_name) {
-      setEditingProfile(true);
-      setProfilePhone(prof?.phone || session?.user?.phone || '');
-      setProfileEmail(prof?.email || session?.user?.email || '');
+      setProfile(prof || null);
+      syncProfileFormState(prof, session?.user);
+      setShowProfileScreen(true);
+      setProfileSubView('details');
+      setIsEditingDetails(true);
+      setHasProfileChanges(true);
       if (typeof window !== 'undefined' && !localStorage.getItem('kaam_permissions_granted')) {
         setShowPermissions(true);
       }
     } else {
       setProfile(prof);
-      setFullName(prof.full_name);
-      setProfilePhone(prof.phone);
-      setProfileEmail(prof.email);
-      setAvatarUrl(prof.avatar_url || '');
-      setUpiQrUrl(prof.upi_qr_url || '');
+      syncProfileFormState(prof, session?.user);
+      setShowProfileScreen(false);
+      setProfileSubView('hub');
+      setIsEditingDetails(false);
       if (typeof window !== 'undefined' && !localStorage.getItem('kaam_permissions_granted')) {
         setShowPermissions(true);
       }
@@ -170,7 +202,72 @@ export default function KaamApp() {
     }
   };
 
-  // AUTH HANDLERS (Login: Phone + OTP | Sign Up: Phone + Email + Password + OTP)
+  const [notifTimestamp, setNotifTimestamp] = useState('');
+
+useEffect(() => {
+  setNotifTimestamp(new Date().toLocaleString());
+}, [session, profile, myApplications]);
+  // BUILD LINE-WISE NOTIFICATIONS WITH DATE & TIME
+  const notificationsList = useMemo<AppNotification[]>(() => {
+    const items: AppNotification[] = [];
+    const nowLabel = notifTimestamp;
+
+    const missingFields: string[] = [];
+    if (!profile?.email && !profileEmail) missingFields.push('Email');
+    if (!profile?.gender && !gender) missingFields.push('Gender');
+    if (!profile?.date_of_birth && !dateOfBirth) missingFields.push('Date of Birth');
+    if (!profile?.emergency_contact && !emergencyContact) missingFields.push('Emergency Contact');
+    if (!profile?.upi_qr_url && !upiQrUrl) missingFields.push('Payment UPI QR');
+
+    if (missingFields.length > 0) {
+      items.push({
+        id: 'notif-profile-remaining',
+        title: 'Profile Information Remaining',
+        detail: `To be saved in profile: ${missingFields.join(', ')}.`,
+        timestamp: nowLabel,
+      });
+    }
+
+    items.push({
+      id: 'notif-offer-priority',
+      title: 'Special Work Offer',
+      detail: 'Register your Work Card to appear higher in local area & category searches.',
+      timestamp: nowLabel,
+    });
+
+    items.push({
+      id: 'notif-offer-referral',
+      title: 'Referral & Daily Work Update',
+      detail: 'Invite fellow workers or hirers from Refer and grow your local work network.',
+      timestamp: nowLabel,
+    });
+
+    myApplications
+      .filter((a) => a.status === 'scheduled' || a.status === 'completed_pending_payment')
+      .slice(0, 5)
+      .forEach((app) => {
+        items.push({
+          id: `notif-app-${app.id}`,
+          title: `Job Update: ${app.jobs?.job_type || 'Daily Job'}`,
+          detail: `Status: ${app.status} • Pay: ₹${app.jobs?.pay_per_person || 0} • ${app.jobs?.location_name || ''}`,
+          timestamp: app.created_at ? new Date(app.created_at).toLocaleString() : nowLabel,
+        });
+      });
+
+    return items.filter((n) => !dismissedNotificationIds.includes(n.id));
+  }, [
+    notifTimestamp,
+    profile,
+    profileEmail,
+    gender,
+    dateOfBirth,
+    emergencyContact,
+    upiQrUrl,
+    myApplications,
+    dismissedNotificationIds,
+  ]);
+
+  // AUTH HANDLERS
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
@@ -212,7 +309,7 @@ export default function KaamApp() {
     }
   };
 
-  // IMAGE UPLOAD HELPER (Profile Picture & UPI QR Scanner)
+  // IMAGE UPLOAD HELPER
   const handleFileUpload = async (file: File, folder: 'avatars' | 'scanners') => {
     if (!session?.user) return '';
     const ext = file.name.split('.').pop();
@@ -226,22 +323,58 @@ export default function KaamApp() {
     return data.publicUrl;
   };
 
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const persistProfilePayload = async (overrideAvatar?: string) => {
     if (!session?.user) return;
-    const payload = {
+    const finalAvatar = overrideAvatar !== undefined ? overrideAvatar : avatarUrl;
+    const payload: any = {
       id: session.user.id,
       full_name: fullName.trim(),
       phone: profilePhone.trim(),
-      email: profileEmail.trim(),
-      avatar_url: avatarUrl,
-      upi_qr_url: upiQrUrl,
+      email: profileEmail.trim() || null,
+      avatar_url: finalAvatar || null,
+      upi_qr_url: upiQrUrl || null,
     };
+    if (gender) payload.gender = gender;
+    if (dateOfBirth) payload.date_of_birth = dateOfBirth;
+    if (emergencyContact) payload.emergency_contact = emergencyContact;
+
     const { data, error } = await supabase.from('profiles').upsert(payload).select().single();
-    if (error) return alert(error.message);
-    setProfile(data);
-    setEditingProfile(false);
+    if (error) {
+      // Fallback if optional columns aren't in DB table yet
+      const basePayload = {
+        id: session.user.id,
+        full_name: fullName.trim(),
+        phone: profilePhone.trim(),
+        email: profileEmail.trim() || null,
+        avatar_url: finalAvatar || null,
+        upi_qr_url: upiQrUrl || null,
+      };
+      const fallbackRes = await supabase.from('profiles').upsert(basePayload).select().single();
+      if (fallbackRes.error) {
+        alert(fallbackRes.error.message);
+        return;
+      }
+      setProfile({
+        ...fallbackRes.data,
+        gender: gender || fallbackRes.data?.gender || '',
+        date_of_birth: dateOfBirth || fallbackRes.data?.date_of_birth || '',
+        emergency_contact: emergencyContact || fallbackRes.data?.emergency_contact || '',
+      });
+    } else {
+      setProfile(data);
+    }
+
+    setHasProfileChanges(false);
+    setIsEditingDetails(false);
+    if (!fullName.trim()) return;
+    setShowProfileScreen(false);
     loadEverything(session.user.id);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session?.user || !hasProfileChanges) return;
+    await persistProfilePayload();
   };
 
   const handleUpdateProfileField = async (updates: any) => {
@@ -379,7 +512,6 @@ export default function KaamApp() {
     loadEverything(session.user.id);
   };
 
-  // WORKER COMPLETES JOB -> CASH OR ONLINE SCANNER -> NOTIFIES HIRER
   const handleFinalizeCompletion = async () => {
     if (!completingApp || !paymentChoice) return;
     await supabase
@@ -395,7 +527,6 @@ export default function KaamApp() {
     loadEverything(session.user.id);
   };
 
-  // HIRER CONFIRMS PAYMENT & RATES WORKER
   const handleHirerConfirmAndRate = async () => {
     if (!hirerPendingPaymentApp) return;
     await supabase
@@ -542,112 +673,624 @@ export default function KaamApp() {
     );
   }
 
-  // 2. FIRST-TIME PROFILE CREATION OR PROFILE EDIT SCREEN
-  if (editingProfile) {
+  const isFirstTimeSetup = !profile?.full_name;
+  const currentRating = Number(profile?.rating_avg || 4.92).toFixed(2);
+  const memberSinceText = profile?.created_at
+    ? new Date(profile.created_at).toLocaleString('en-US', { month: 'long', year: 'numeric' })
+    : 'November 2026';
+
+  // 2. PROFILE SCREEN (First-Time Basic Setup | Profile Hub | Full Profile Details | Rating)
+  if (showProfileScreen) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white p-5">
         {showPermissions && <PermissionsModal onComplete={() => setShowPermissions(false)} />}
 
-        <div className="max-w-md mx-auto bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-200 dark:border-slate-800">
-          <h2 className="text-xl font-black mb-1">Your NeedHub Profile</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
-            Complete your details to post daily jobs, connect, and receive payments.
-          </p>
+        {/* HIDDEN INPUTS FOR CIRCULAR PHOTO PICKER & QR */}
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              const url = await handleFileUpload(file, 'avatars');
+              if (url) {
+                setAvatarUrl(url);
+                setHasProfileChanges(true);
+                if (!isFirstTimeSetup) {
+                  await persistProfilePayload(url);
+                }
+              }
+            }
+            setShowPhotoMenu(false);
+          }}
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              const url = await handleFileUpload(file, 'avatars');
+              if (url) {
+                setAvatarUrl(url);
+                setHasProfileChanges(true);
+                if (!isFirstTimeSetup) {
+                  await persistProfilePayload(url);
+                }
+              }
+            }
+            setShowPhotoMenu(false);
+          }}
+        />
+        <input
+          ref={qrInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              const url = await handleFileUpload(file, 'scanners');
+              if (url) {
+                setUpiQrUrl(url);
+                setHasProfileChanges(true);
+              }
+            }
+          }}
+        />
 
-          <form onSubmit={handleSaveProfile} className="space-y-4">
+        {/* FIRST-TIME MINIMAL BASIC SETUP */}
+        {isFirstTimeSetup ? (
+          <div className="max-w-md mx-auto bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-200 dark:border-slate-800 space-y-5">
             <div>
-              <label className="block text-xs font-bold mb-1">Profile Picture (Optional)</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const url = await handleFileUpload(file, 'avatars');
-                    if (url) setAvatarUrl(url);
-                  }
-                }}
-                className="w-full text-xs"
-              />
-              {avatarUrl && (
-                <img src={avatarUrl} alt="Preview" className="w-16 h-16 rounded-full object-cover mt-2 border" />
-              )}
+              <h2 className="text-xl font-black">Create Your Profile</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Enter basic details to get started. More details can be added later from Profile.
+              </p>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold mb-1">Full Name</label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-                placeholder="Enter your full name"
-                className="w-full px-4 py-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-transparent text-sm"
-              />
-            </div>
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => {
+                    setFullName(e.target.value);
+                    setHasProfileChanges(true);
+                  }}
+                  required
+                  placeholder="Enter your full name"
+                  className="w-full px-4 py-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-transparent text-sm"
+                />
+              </div>
 
-            <div>
-              <label className="block text-xs font-bold mb-1">Mobile Number</label>
-              <input
-                type="tel"
-                value={profilePhone}
-                onChange={(e) => setProfilePhone(e.target.value)}
-                required
-                placeholder="+91 9876543210"
-                className="w-full px-4 py-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-transparent text-sm"
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-bold mb-1">Mobile Number</label>
+                <input
+                  type="tel"
+                  value={profilePhone}
+                  onChange={(e) => {
+                    setProfilePhone(e.target.value);
+                    setHasProfileChanges(true);
+                  }}
+                  required
+                  placeholder="+91 9876543210"
+                  className="w-full px-4 py-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-transparent text-sm"
+                />
+              </div>
 
-            <div>
-              <label className="block text-xs font-bold mb-1">Email ID</label>
-              <input
-                type="email"
-                value={profileEmail}
-                onChange={(e) => setProfileEmail(e.target.value)}
-                required
-                placeholder="you@example.com"
-                className="w-full px-4 py-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-transparent text-sm"
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-bold mb-1">Email ID</label>
+                <input
+                  type="email"
+                  value={profileEmail}
+                  onChange={(e) => {
+                    setProfileEmail(e.target.value);
+                    setHasProfileChanges(true);
+                  }}
+                  required
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-transparent text-sm"
+                />
+              </div>
 
-            <div>
-              <label className="block text-xs font-bold mb-1">
-                Payment UPI QR Scanner Image (Shown to hirer when taking online payment)
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const url = await handleFileUpload(file, 'scanners');
-                    if (url) setUpiQrUrl(url);
-                  }
-                }}
-                className="w-full text-xs"
-              />
-              {upiQrUrl && <p className="text-xs text-emerald-600 font-semibold mt-1">✓ QR Scanner uploaded</p>}
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                type="submit"
-                className="flex-1 py-3.5 rounded-2xl bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-extrabold text-sm"
-              >
-                Save Profile
-              </button>
-              {profile?.full_name && (
+              {hasProfileChanges && (
                 <button
-                  type="button"
-                  onClick={() => setEditingProfile(false)}
-                  className="px-4 py-3.5 rounded-2xl bg-slate-200 dark:bg-slate-800 text-xs font-bold"
+                  type="submit"
+                  className="w-full py-3.5 rounded-2xl bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-extrabold text-sm"
                 >
-                  Cancel
+                  Save Profile
                 </button>
               )}
+            </form>
+          </div>
+        ) : profileSubView === 'hub' ? (
+          /* PROFILE HUB (Photo 1 Layout: Circle + Change Language, Name & Phone Row, My Rating, Work Card, Settings, Privacy, Refer, About Us, Log Out) */
+          <div className="max-w-md mx-auto space-y-4">
+            {/* TOP BAR: Circular Profile Picture (Left) + Change Language (Right) */}
+            <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPhotoMenu((prev) => !prev)}
+                  className="w-12 h-12 rounded-full border-2 border-blue-600 dark:border-sky-400 bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden shrink-0"
+                  aria-label="Profile picture options"
+                >
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-base font-black text-blue-600 dark:text-sky-400">
+                      {fullName?.[0]?.toUpperCase() || 'P'}
+                    </span>
+                  )}
+                </button>
+                <span className="text-lg font-black">Profile</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveMenuModal('settings')}
+                className="px-3.5 py-2 rounded-full bg-slate-100 dark:bg-slate-800 border border-amber-400/60 text-xs font-extrabold flex items-center gap-1.5"
+              >
+                <span>अ/A</span>
+                <span>Change Language</span>
+              </button>
+
+              {showPhotoMenu && (
+                <div className="absolute left-4 top-16 w-60 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 shadow-2xl space-y-1 z-30">
+                  <button
+                    type="button"
+                    onClick={() => galleryInputRef.current?.click()}
+                    className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700"
+                  >
+                    Choose Picture from Photos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700"
+                  >
+                    Take Photo with Camera
+                  </button>
+                  {avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setAvatarUrl('');
+                        setShowPhotoMenu(false);
+                        await persistProfilePayload('');
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                    >
+                      Delete Photo
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
-          </form>
-        </div>
+
+            {/* NAME & PHONE CARD (No profile picture on left of name; clicking opens Photo 2 full profile details) */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  syncProfileFormState(profile, session.user);
+                  setIsEditingDetails(false);
+                  setHasProfileChanges(false);
+                  setProfileSubView('details');
+                }}
+                className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-sm">
+                    👤
+                  </div>
+                  <div>
+                    <p className="font-extrabold text-sm">{profile?.full_name || fullName}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {profile?.phone || profilePhone}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-slate-400 font-bold text-base">&gt;</span>
+              </button>
+
+              {/* MY RATING ROW */}
+              <button
+                type="button"
+                onClick={() => setProfileSubView('rating')}
+                className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition"
+              >
+                <div className="flex items-center gap-3.5">
+                  <span className="text-amber-400 text-lg leading-none">★</span>
+                  <span className="font-extrabold text-sm">{currentRating} My Rating</span>
+                </div>
+                <span className="text-slate-400 font-bold text-base">&gt;</span>
+              </button>
+            </div>
+
+            {/* MENU OPTIONS FROM THREE DOTS (Register Work Card, Settings, Privacy & Security, Refer, About Us, Log Out) */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden text-sm font-bold">
+              <button
+                type="button"
+                onClick={() => setShowRegisterWorkCard(true)}
+                className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60"
+              >
+                <span>🪪 Register Work Card</span>
+                <span className="text-slate-400">&gt;</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveMenuModal('settings')}
+                className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60"
+              >
+                <span>⚙️ Settings</span>
+                <span className="text-slate-400">&gt;</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveMenuModal('privacy')}
+                className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60"
+              >
+                <span>🔒 Privacy & Security</span>
+                <span className="text-slate-400">&gt;</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveMenuModal('refer')}
+                className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60"
+              >
+                <span>🎁 Refer</span>
+                <span className="text-slate-400">&gt;</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveMenuModal('about')}
+                className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60"
+              >
+                <span>ℹ️ About Us</span>
+                <span className="text-slate-400">&gt;</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  setShowProfileScreen(false);
+                  await supabase.auth.signOut();
+                }}
+                className="w-full flex items-center justify-between px-4 py-4 text-left text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+              >
+                <span>🚪 Log Out</span>
+                <span>&gt;</span>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowProfileScreen(false)}
+              className="w-full py-3 rounded-2xl bg-slate-200 dark:bg-slate-800 text-xs font-extrabold"
+            >
+              ← Back to Home
+            </button>
+          </div>
+        ) : profileSubView === 'rating' ? (
+          /* MY RATING VIEW */
+          <div className="max-w-md mx-auto bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setProfileSubView('hub')}
+                className="text-xs font-extrabold text-blue-600 dark:text-sky-400"
+              >
+                ← Back
+              </button>
+              <h3 className="font-black text-base">My Rating</h3>
+              <span className="w-10" />
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/70 text-center space-y-1">
+              <p className="text-4xl font-black text-amber-500">★ {currentRating}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Average rating from completed work & hirers
+              </p>
+            </div>
+          </div>
+        ) : (
+          /* FULL PROFILE DETAILS VIEW & EDIT (Photo 2 Layout + Edit Button at Last + Save Only When Edited) */
+          <div className="max-w-md mx-auto bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    syncProfileFormState(profile, session.user);
+                    setIsEditingDetails(false);
+                    setHasProfileChanges(false);
+                    setProfileSubView('hub');
+                  }}
+                  className="text-lg font-black"
+                  aria-label="Back to Profile"
+                >
+                  ←
+                </button>
+                <h2 className="text-lg font-black">Profile</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveMenuModal('about')}
+                className="px-3 py-1.5 rounded-full border border-slate-300 dark:border-slate-700 text-xs font-bold"
+              >
+                (?) Help
+              </button>
+            </div>
+
+            {!isEditingDetails ? (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                <div className="py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Name</p>
+                    <p className="font-bold">{profile?.full_name || fullName}</p>
+                  </div>
+                  <span className="text-slate-400">&gt;</span>
+                </div>
+
+                <div className="py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Phone Number</p>
+                    <p className="font-bold">{profile?.phone || profilePhone}</p>
+                  </div>
+                </div>
+
+                <div className="py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Email</p>
+                    {profile?.email || profileEmail ? (
+                      <p className="font-bold">{profile?.email || profileEmail}</p>
+                    ) : (
+                      <p className="text-xs font-bold text-rose-600">Required</p>
+                    )}
+                  </div>
+                  <span className="text-slate-400">&gt;</span>
+                </div>
+
+                <div className="py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Gender</p>
+                    <p className="font-bold">{profile?.gender || gender || 'Not set'}</p>
+                  </div>
+                </div>
+
+                <div className="py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Date of Birth</p>
+                    {profile?.date_of_birth || dateOfBirth ? (
+                      <p className="font-bold">{profile?.date_of_birth || dateOfBirth}</p>
+                    ) : (
+                      <p className="text-xs font-bold text-rose-600">Required</p>
+                    )}
+                  </div>
+                  <span className="text-slate-400">&gt;</span>
+                </div>
+
+                <div className="py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Member Since</p>
+                    <p className="font-bold">{memberSinceText}</p>
+                  </div>
+                </div>
+
+                <div className="py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Emergency contact</p>
+                    {profile?.emergency_contact || emergencyContact ? (
+                      <p className="font-bold">{profile?.emergency_contact || emergencyContact}</p>
+                    ) : (
+                      <p className="text-xs font-bold text-rose-600">Required</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingDetails(true);
+                      setHasProfileChanges(false);
+                    }}
+                    className="text-xs font-extrabold text-blue-600 dark:text-sky-400"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                <div className="pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingDetails(true);
+                      setHasProfileChanges(false);
+                    }}
+                    className="w-full py-3.5 rounded-2xl bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-extrabold text-sm"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSaveProfile} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => {
+                      setFullName(e.target.value);
+                      setHasProfileChanges(true);
+                    }}
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={profilePhone}
+                    onChange={(e) => {
+                      setProfilePhone(e.target.value);
+                      setHasProfileChanges(true);
+                    }}
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={profileEmail}
+                    onChange={(e) => {
+                      setProfileEmail(e.target.value);
+                      setHasProfileChanges(true);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold mb-1">Gender</label>
+                  <select
+                    value={gender}
+                    onChange={(e) => {
+                      setGender(e.target.value);
+                      setHasProfileChanges(true);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold mb-1">Date of Birth</label>
+                  <input
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => {
+                      setDateOfBirth(e.target.value);
+                      setHasProfileChanges(true);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold mb-1">Emergency Contact</label>
+                  <input
+                    type="tel"
+                    value={emergencyContact}
+                    onChange={(e) => {
+                      setEmergencyContact(e.target.value);
+                      setHasProfileChanges(true);
+                    }}
+                    placeholder="+91 9876543210"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold mb-1">Payment UPI QR</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => qrInputRef.current?.click()}
+                      className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold"
+                    >
+                      Upload QR Image
+                    </button>
+                    {upiQrUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUpiQrUrl('');
+                          setHasProfileChanges(true);
+                        }}
+                        className="text-xs font-bold text-rose-600"
+                      >
+                        Remove QR
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  {hasProfileChanges && (
+                    <button
+                      type="submit"
+                      className="flex-1 py-3 rounded-xl bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-extrabold text-xs"
+                    >
+                      Save
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      syncProfileFormState(profile, session.user);
+                      setIsEditingDetails(false);
+                      setHasProfileChanges(false);
+                    }}
+                    className="px-4 py-3 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+
+        {/* REGISTER WORK CARD MODAL */}
+        {showRegisterWorkCard && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+            <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-black text-base">Register Work Card</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowRegisterWorkCard(false)}
+                  className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold"
+                >
+                  Close
+                </button>
+              </div>
+              <RegisterProviderForm
+                onSuccess={() => {
+                  setProviderRefreshKey((prev) => prev + 1);
+                  setShowRegisterWorkCard(false);
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        <MenuModal
+          activeModal={activeMenuModal}
+          onClose={() => setActiveMenuModal(null)}
+          profile={profile}
+          onUpdateProfile={handleUpdateProfileField}
+        />
       </div>
     );
   }
@@ -657,24 +1300,34 @@ export default function KaamApp() {
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-white pb-24">
       {showPermissions && <PermissionsModal onComplete={() => setShowPermissions(false)} />}
 
-      {/* TOP HEADER BAR: Profile Pic (Left) | Kaam Logo (Center) | Messages + 3 Dots (Right) */}
+      {/* TOP HEADER BAR: Profile Tab (Left) | NeedHub Logo (Center) | Messages + Notification Bell (Right) */}
       <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between">
         <button
-          onClick={() => setEditingProfile(true)}
-          title="Edit Profile"
-          className="flex items-center gap-2"
+          type="button"
+          onClick={() => {
+            syncProfileFormState(profile, session.user);
+            setProfileSubView('hub');
+            setIsEditingDetails(false);
+            setHasProfileChanges(false);
+            setShowProfileScreen(true);
+          }}
+          title="Open Profile"
+          className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
         >
           {profile?.avatar_url ? (
             <img
               src={profile.avatar_url}
               alt={profile.full_name}
-              className="w-9 h-9 rounded-full object-cover border-2 border-blue-600 dark:border-sky-400"
+              className="w-7 h-7 rounded-full object-cover border border-blue-600 dark:border-sky-400"
             />
           ) : (
-            <div className="w-9 h-9 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-black text-sm flex items-center justify-center">
-              {profile?.full_name?.[0]?.toUpperCase() || 'N'}
+            <div className="w-7 h-7 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 font-black text-xs flex items-center justify-center">
+              {profile?.full_name?.[0]?.toUpperCase() || 'P'}
             </div>
           )}
+          <span className="text-xs font-extrabold max-w-[90px] truncate">
+            {profile?.full_name || 'Profile'}
+          </span>
         </button>
 
         <div className="flex items-center gap-1.5">
@@ -682,8 +1335,9 @@ export default function KaamApp() {
           <span className="font-black text-lg tracking-tight">NeedHub</span>
         </div>
 
-        <div className="flex items-center gap-2 relative">
+        <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setShowMessagesModal(true)}
             className="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold"
           >
@@ -691,76 +1345,25 @@ export default function KaamApp() {
           </button>
 
           <button
-            onClick={() => setMenuOpen((prev) => !prev)}
-            className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 font-black text-lg flex items-center justify-center"
-            aria-label="More options"
+            type="button"
+            onClick={() => {
+              setSelectedNotification(null);
+              setShowNotificationsModal(true);
+            }}
+            aria-label="Notifications"
+            className="relative w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 font-bold text-base flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition"
           >
-            ⋮
+            <span>🔔</span>
+            {notificationsList.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 text-[10px] font-black flex items-center justify-center">
+                {notificationsList.length}
+              </span>
+            )}
           </button>
-
-          {menuOpen && (
-            <div className="absolute right-0 top-12 w-56 rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 py-2 z-40 text-sm font-semibold">
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  setShowRegisterWorkCard(true);
-                }}
-                className="w-full text-left px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                🪪 Register Work Card
-              </button>
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  setActiveMenuModal('settings');
-                }}
-                className="w-full text-left px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                ⚙️ Settings
-              </button>
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  setActiveMenuModal('privacy');
-                }}
-                className="w-full text-left px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                🔒 Privacy & Security
-              </button>
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  setActiveMenuModal('about');
-                }}
-                className="w-full text-left px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                ℹ️ About App
-              </button>
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  setActiveMenuModal('refer');
-                }}
-                className="w-full text-left px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                🎁 Refer
-              </button>
-              <hr className="my-1 border-slate-200 dark:border-slate-800" />
-              <button
-                onClick={async () => {
-                  setMenuOpen(false);
-                  await supabase.auth.signOut();
-                }}
-                className="w-full text-left px-4 py-2.5 text-rose-600 font-bold hover:bg-rose-50 dark:hover:bg-rose-950/30"
-              >
-                🚪 Log Out
-              </button>
-            </div>
-          )}
         </div>
       </header>
 
-      {/* 3 MAIN OPTIONS NAVIGATION (Stories opens by default) */}
+      {/* 3 MAIN OPTIONS NAVIGATION */}
       <nav className="max-w-2xl mx-auto px-4 pt-3">
         <div className="grid grid-cols-3 gap-2 bg-white dark:bg-slate-900 p-1.5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
           <button
@@ -797,7 +1400,6 @@ export default function KaamApp() {
 
       {/* MAIN CONTENT BODY */}
       <main className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
-        {/* TAB 1: STORIES (DEFAULT) */}
         {activeTab === 'stories' && (
           <div className="space-y-4">
             <form
@@ -853,7 +1455,6 @@ export default function KaamApp() {
           </div>
         )}
 
-        {/* TAB 2: POST JOB */}
         {activeTab === 'post' && (
           <div className="space-y-4">
             <button
@@ -863,7 +1464,6 @@ export default function KaamApp() {
               {showPostForm ? '✕ Close Post New Job Form' : '+ Post New Job'}
             </button>
 
-            {/* SEARCH BAR JUST BELOW POST NEW JOB */}
             <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
               <div className="flex items-center justify-between gap-2">
                 <label htmlFor="post-job-search" className="text-xs font-extrabold">
@@ -1048,7 +1648,6 @@ export default function KaamApp() {
               </form>
             )}
 
-            {/* YOUR SCHEDULED JOBS (Posted by You -> Click to Edit Date/Time/Description or Delete) */}
             <div className="space-y-3">
               <h3 className="text-sm font-extrabold">Your Scheduled Jobs (Posted by You)</h3>
               {myPostedJobs.length === 0 ? (
@@ -1086,7 +1685,6 @@ export default function KaamApp() {
           </div>
         )}
 
-        {/* TAB 3: FIND JOB & PEOPLE */}
         {activeTab === 'find' && (
           <div className="space-y-4">
             <WorkerJobRequestsPanel
@@ -1226,26 +1824,65 @@ export default function KaamApp() {
         )}
       </main>
 
-      {/* MODAL: REGISTER WORK CARD (FROM 3-DOTS MENU) */}
-      {showRegisterWorkCard && (
+      {/* NOTIFICATIONS MODAL (Line-wise with Date & Time + Click to Delete) */}
+      {showNotificationsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white dark:bg-slate-900 p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-black text-base">Register Work Card</h3>
+          <div className="w-full max-w-md max-h-[85vh] flex flex-col bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-black text-base">Notifications</h3>
               <button
                 type="button"
-                onClick={() => setShowRegisterWorkCard(false)}
+                onClick={() => {
+                  setSelectedNotification(null);
+                  setShowNotificationsModal(false);
+                }}
                 className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold"
               >
                 Close
               </button>
             </div>
-            <RegisterProviderForm
-              onSuccess={() => {
-                setProviderRefreshKey((prev) => prev + 1);
-                setShowRegisterWorkCard(false);
-              }}
-            />
+
+            <div className="overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 flex-1">
+              {notificationsList.length === 0 ? (
+                <p className="text-xs text-slate-500 py-8 text-center">No notifications right now.</p>
+              ) : (
+                notificationsList.map((notif) => {
+                  const isPicked = selectedNotification?.id === notif.id;
+                  return (
+                    <div key={notif.id} className="py-3 space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedNotification(isPicked ? null : notif)}
+                        className="w-full text-left flex items-start justify-between gap-3"
+                      >
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-extrabold text-slate-900 dark:text-slate-100">
+                            {notif.title}
+                          </p>
+                          <p className="text-xs text-slate-600 dark:text-slate-300">{notif.detail}</p>
+                        </div>
+                        <span className="text-[10px] text-slate-400 shrink-0">{notif.timestamp}</span>
+                      </button>
+
+                      {isPicked && (
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDismissedNotificationIds((prev) => [...prev, notif.id]);
+                              setSelectedNotification(null);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-extrabold"
+                          >
+                            Delete Notification
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1311,7 +1948,7 @@ export default function KaamApp() {
         </div>
       )}
 
-      {/* MODAL: WORKER APPLIED JOB FULL DETAILS + COMPLETE / CANCEL */}
+      {/* MODAL: WORKER APPLIED JOB FULL DETAILS */}
       {selectedAppliedApp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 space-y-3">
@@ -1352,7 +1989,7 @@ export default function KaamApp() {
         </div>
       )}
 
-      {/* MODAL: JOB COMPLETED -> PAY SHOWN + CASH OR ONLINE SCANNER */}
+      {/* MODAL: JOB COMPLETED */}
       {completingApp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 text-center space-y-4">
@@ -1414,7 +2051,7 @@ export default function KaamApp() {
         </div>
       )}
 
-      {/* POP-UP TO HIRER: JOB COMPLETED -> AMOUNT TO PAY -> RATE WORKER */}
+      {/* POP-UP TO HIRER */}
       {hirerPendingPaymentApp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 text-center space-y-4">
@@ -1458,7 +2095,7 @@ export default function KaamApp() {
         </div>
       )}
 
-      {/* MESSAGES MODAL (Connected People + Direct Chats) */}
+      {/* MESSAGES MODAL */}
       {showMessagesModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-3xl max-h-[85vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-sky-500/20 rounded-3xl p-5 space-y-3 shadow-2xl">
@@ -1476,7 +2113,6 @@ export default function KaamApp() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 min-h-[380px] max-h-[65vh]">
-              {/* Left Column: Connected People + Direct Messaged Users */}
               <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-3 md:pb-0 md:pr-3 overflow-y-auto space-y-2">
                 <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1">
                   Chats
@@ -1543,7 +2179,6 @@ export default function KaamApp() {
                 })()}
               </div>
 
-              {/* Right Column: Active Chat Thread */}
               <div className="md:col-span-7 flex flex-col justify-between min-h-[320px]">
                 {!selectedChatUser ? (
                   <div className="flex-1 flex flex-col items-center justify-center text-center px-4 py-8 rounded-2xl bg-slate-50/70 dark:bg-slate-950/50 border border-dashed border-slate-200 dark:border-slate-800">
@@ -1556,7 +2191,6 @@ export default function KaamApp() {
                   </div>
                 ) : (
                   <div className="flex flex-col h-full justify-between gap-2.5">
-                    {/* Top Chat Header */}
                     <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-full bg-blue-600 dark:bg-sky-500 text-white dark:text-slate-950 flex items-center justify-center text-xs font-extrabold">
@@ -1575,7 +2209,6 @@ export default function KaamApp() {
                       </button>
                     </div>
 
-                    {/* Messages Scroll Area */}
                     <div className="h-64 overflow-y-auto space-y-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200/70 dark:border-slate-800">
                       {messages
                         .filter(
@@ -1597,7 +2230,6 @@ export default function KaamApp() {
                         ))}
                     </div>
 
-                    {/* Message Input Box */}
                     <form onSubmit={handleSendMessage} className="flex gap-2">
                       <input
                         type="text"
@@ -1621,7 +2253,7 @@ export default function KaamApp() {
         </div>
       )}
 
-      {/* SETTINGS / PRIVACY / ABOUT / REFER MODAL */}
+      {/* SETTINGS / PRIVACY / ABOUT US / REFER MODAL */}
       <MenuModal
         activeModal={activeMenuModal}
         onClose={() => setActiveMenuModal(null)}
